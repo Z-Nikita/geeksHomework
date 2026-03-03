@@ -8,6 +8,7 @@ urlpatterns = [
 
     # Products
     path("products/", views.ProductListAPIView.as_view(), name="product-list"),
+    path("products/reviews/", views.ProductReviewsListAPIView.as_view(), name="product-reviews"),
     path("products/<int:id>/", views.ProductDetailAPIView.as_view(), name="product-detail"),
 
     # Reviews
