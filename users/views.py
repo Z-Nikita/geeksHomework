@@ -1,7 +1,6 @@
 from rest_framework import generics, status
 from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
-from rest_framework.views import APIView
 
 from .serializers import ConfirmUserSerializer, LoginSerializer, RegisterSerializer
 
@@ -10,9 +9,11 @@ class RegisterAPIView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
 
 
-class LoginAPIView(APIView):
+class LoginAPIView(generics.GenericAPIView):
+    serializer_class = LoginSerializer
+
     def post(self, request, *args, **kwargs):
-        serializer = LoginSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']
         token, _ = Token.objects.get_or_create(user=user)
@@ -26,9 +27,11 @@ class LoginAPIView(APIView):
         )
 
 
-class ConfirmUserAPIView(APIView):
+class ConfirmUserAPIView(generics.GenericAPIView):
+    serializer_class = ConfirmUserSerializer
+
     def post(self, request, *args, **kwargs):
-        serializer = ConfirmUserSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user, token = serializer.save()
         return Response(
