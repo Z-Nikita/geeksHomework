@@ -1,10 +1,15 @@
+import os
 from pathlib import Path
+
+import dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-change-me'
+dotenv.read_dotenv(BASE_DIR / '.env')
 
-DEBUG = True
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-change-me')
+
+DEBUG = os.environ.get('DEBUG', 'True').lower() == 'true'
 
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver']
 
@@ -57,8 +62,12 @@ WSGI_APPLICATION = 'shop_api.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.environ.get('POSTGRES_DB', 'shop_api_db'),
+        'USER': os.environ.get('POSTGRES_USER', 'postgres'),
+        'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'postgres'),
+        'HOST': os.environ.get('POSTGRES_HOST', 'localhost'),
+        'PORT': os.environ.get('POSTGRES_PORT', '5432'),
     }
 }
 
@@ -82,10 +91,9 @@ REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
         'rest_framework.renderers.BrowsableAPIRenderer',
-    ]
+    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
 }
-
-REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = [
-    'rest_framework.authentication.TokenAuthentication',
-    'rest_framework.authentication.SessionAuthentication',
-]
