@@ -21,7 +21,7 @@ class LoginAPIView(generics.GenericAPIView):
             {
                 'token': token.key,
                 'user_id': user.id,
-                'username': user.username,
+                'email': user.email,
             },
             status=status.HTTP_200_OK,
         )
@@ -38,7 +38,7 @@ class ConfirmUserAPIView(generics.GenericAPIView):
             {
                 'message': 'User confirmed successfully.',
                 'user_id': user.id,
-                'username': user.username,
+                'email': user.email,
                 'token': token.key,
             },
             status=status.HTTP_200_OK,

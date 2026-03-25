@@ -1,4 +1,4 @@
-from django.contrib.auth import get_user_model
+from django.contrib.auth import authenticate, get_user_model
 from rest_framework import serializers
 from rest_framework.authtoken.models import Token
 
@@ -8,17 +8,21 @@ User = get_user_model()
 
 
 class RegisterSerializer(serializers.Serializer):
-    username = serializers.CharField(max_length=150)
-    password = serializers.CharField(write_only=True, min_length=6)
-    password_confirm = serializers.CharField(write_only=True, min_length=6)
+    email = serializers.EmailField()
+    phone_number = serializers.CharField(required=False, allow_blank=True, allow_null=True, max_length=30)
+    password = serializers.CharField(write_only=True, min_length=6, style={'input_type': 'password'})
+    password_confirm = serializers.CharField(write_only=True, min_length=6, style={'input_type': 'password'})
 
-    def validate_username(self, value):
-        value = value.strip()
-        if not value:
-            raise serializers.ValidationError('Username cannot be empty.')
-        if User.objects.filter(username__iexact=value).exists():
-            raise serializers.ValidationError('User with this username already exists.')
+    def validate_email(self, value):
+        value = value.strip().lower()
+        if User.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError('User with this email already exists.')
         return value
+
+    def validate_phone_number(self, value):
+        if value is None:
+            return ''
+        return value.strip()
 
     def validate(self, attrs):
         if attrs['password'] != attrs['password_confirm']:
@@ -26,19 +30,27 @@ class RegisterSerializer(serializers.Serializer):
         return attrs
 
     def create(self, validated_data):
-        username = validated_data['username']
+        email = validated_data['email']
         password = validated_data['password']
-        user = User.objects.create_user(username=username, password=password, is_active=False)
+        phone_number = validated_data.get('phone_number', '')
+        user = User.objects.create_user(
+            email=email,
+            password=password,
+            phone_number=phone_number or '',
+            is_active=False,
+        )
         code = generate_confirmation_code()
         while ConfirmationCode.objects.filter(code=code).exists():
             code = generate_confirmation_code()
-        ConfirmationCode.objects.create(user=user, code=code)
+        ConfirmationCode.objects.update_or_create(user=user, defaults={'code': code})
         return user
 
     def to_representation(self, instance):
+        phone_number = instance.phone_number if instance.phone_number else ''
         return {
             'id': instance.id,
-            'username': instance.username,
+            'email': instance.email,
+            'phone_number': phone_number,
             'is_active': instance.is_active,
             'confirmation_code': instance.confirmation_code.code,
             'message': 'User registered successfully. Confirm the account with the 6-digit code.',
@@ -46,20 +58,19 @@ class RegisterSerializer(serializers.Serializer):
 
 
 class LoginSerializer(serializers.Serializer):
-    username = serializers.CharField()
-    password = serializers.CharField(write_only=True)
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True, style={'input_type': 'password'})
 
     def validate(self, attrs):
-        username = attrs.get('username', '').strip()
+        email = attrs.get('email', '').strip().lower()
         password = attrs.get('password')
-        try:
-            user = User.objects.get(username__iexact=username)
-        except User.DoesNotExist:
-            raise serializers.ValidationError({'detail': 'Invalid username or password.'})
 
-        if not user.check_password(password):
-            raise serializers.ValidationError({'detail': 'Invalid username or password.'})
+        user = authenticate(request=self.context.get('request'), email=email, password=password)
+        if user is None:
+            user = authenticate(request=self.context.get('request'), username=email, password=password)
 
+        if user is None:
+            raise serializers.ValidationError({'detail': 'Invalid email or password.'})
         if not user.is_active:
             raise serializers.ValidationError({'detail': 'User is not confirmed.'})
 
@@ -68,16 +79,16 @@ class LoginSerializer(serializers.Serializer):
 
 
 class ConfirmUserSerializer(serializers.Serializer):
-    username = serializers.CharField()
+    email = serializers.EmailField()
     code = serializers.CharField(max_length=6)
 
     def validate(self, attrs):
-        username = attrs.get('username', '').strip()
+        email = attrs.get('email', '').strip().lower()
         code = attrs.get('code', '').strip()
         try:
-            user = User.objects.get(username__iexact=username)
+            user = User.objects.get(email__iexact=email)
         except User.DoesNotExist:
-            raise serializers.ValidationError({'username': 'User not found.'})
+            raise serializers.ValidationError({'email': 'User not found.'})
 
         if user.is_active:
             raise serializers.ValidationError({'detail': 'User is already confirmed.'})
@@ -86,8 +97,10 @@ class ConfirmUserSerializer(serializers.Serializer):
             confirmation = user.confirmation_code
         except ConfirmationCode.DoesNotExist:
             raise serializers.ValidationError({'code': 'Confirmation code not found.'})
+
         if confirmation.code != code:
             raise serializers.ValidationError({'code': 'Invalid confirmation code.'})
+
         attrs['user'] = user
         attrs['confirmation'] = confirmation
         return attrs
