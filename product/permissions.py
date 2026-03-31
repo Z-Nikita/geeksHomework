@@ -20,7 +20,7 @@ class IsOwner(BasePermission):
 
 
 class IsModerator(BasePermission):
-    message = 'Moderator must have is_staff=True. Moderators may view, update and delete чужие products, but cannot create products.'
+    message = 'Moderator must have is_staff=True. Moderators may view, update and delete other users products, but cannot create products.'
 
     def has_permission(self, request, view):
         return bool(
