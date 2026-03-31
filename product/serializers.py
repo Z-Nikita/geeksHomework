@@ -41,6 +41,8 @@ class ProductSerializer(serializers.ModelSerializer):
         },
     )
     category_name = serializers.CharField(source="category.name", read_only=True)
+    owner = serializers.PrimaryKeyRelatedField(read_only=True)
+    owner_email = serializers.EmailField(source='owner.email', read_only=True)
     title = serializers.CharField(
         max_length=255,
         error_messages={
@@ -64,7 +66,7 @@ class ProductSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        fields = ("id", "title", "description", "price", "category", "category_name")
+        fields = ("id", "title", "description", "price", "category", "category_name", "owner", "owner_email")
 
     def validate_title(self, value):
         value = value.strip()
@@ -127,6 +129,7 @@ class ReviewNestedSerializer(serializers.ModelSerializer):
 
 class ProductWithReviewsSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source="category.name", read_only=True)
+    owner_email = serializers.EmailField(source='owner.email', read_only=True)
     rating = serializers.FloatField(read_only=True)
     reviews = ReviewNestedSerializer(many=True, read_only=True)
 
@@ -139,6 +142,7 @@ class ProductWithReviewsSerializer(serializers.ModelSerializer):
             "price",
             "category",
             "category_name",
+            "owner_email",
             "rating",
             "reviews",
         )
