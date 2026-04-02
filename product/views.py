@@ -3,8 +3,9 @@ from django.db.models.functions import Coalesce
 from rest_framework import generics, permissions
 from rest_framework.exceptions import PermissionDenied
 
-from .models import Category, Product, Review
 from common.permissions import IsModerator, IsOwner, ReadOnly
+from common.validators import validate_age_for_product_creation
+from .models import Category, Product, Review
 from .serializers import (
     CategorySerializer,
     ProductSerializer,
@@ -32,6 +33,7 @@ class ProductListAPIView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         if self.request.user.is_staff:
             raise PermissionDenied('Moderator cannot create products.')
+        validate_age_for_product_creation(self.request)
         serializer.save(owner=self.request.user)
 
 

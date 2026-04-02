@@ -1,15 +1,34 @@
 from django.contrib.auth import authenticate, get_user_model
 from rest_framework import serializers
 from rest_framework.authtoken.models import Token
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from .models import ConfirmationCode, generate_confirmation_code
 
 User = get_user_model()
 
 
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token['email'] = user.email
+        token['birthdate'] = user.birthdate.isoformat() if user.birthdate else None
+        return token
+
+
+def build_jwt_tokens_for_user(user):
+    refresh = CustomTokenObtainPairSerializer.get_token(user)
+    return {
+        'refresh': str(refresh),
+        'access': str(refresh.access_token),
+    }
+
+
 class RegisterSerializer(serializers.Serializer):
     email = serializers.EmailField()
     phone_number = serializers.CharField(required=False, allow_blank=True, allow_null=True, max_length=30)
+    birthdate = serializers.DateField(required=False, allow_null=True)
     password = serializers.CharField(write_only=True, min_length=6, style={'input_type': 'password'})
     password_confirm = serializers.CharField(write_only=True, min_length=6, style={'input_type': 'password'})
 
@@ -33,10 +52,12 @@ class RegisterSerializer(serializers.Serializer):
         email = validated_data['email']
         password = validated_data['password']
         phone_number = validated_data.get('phone_number', '')
+        birthdate = validated_data.get('birthdate')
         user = User.objects.create_user(
             email=email,
             password=password,
             phone_number=phone_number or '',
+            birthdate=birthdate,
             is_active=False,
         )
         code = generate_confirmation_code()
@@ -51,6 +72,7 @@ class RegisterSerializer(serializers.Serializer):
             'id': instance.id,
             'email': instance.email,
             'phone_number': phone_number,
+            'birthdate': instance.birthdate.isoformat() if instance.birthdate else None,
             'is_active': instance.is_active,
             'confirmation_code': instance.confirmation_code.code,
             'message': 'User registered successfully. Confirm the account with the 6-digit code.',
