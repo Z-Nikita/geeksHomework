@@ -4,7 +4,7 @@ from rest_framework import generics, permissions
 from rest_framework.exceptions import PermissionDenied
 
 from .models import Category, Product, Review
-from .permissions import IsModerator, IsOwner, ReadOnly
+from common.permissions import IsModerator, IsOwner, ReadOnly
 from .serializers import (
     CategorySerializer,
     ProductSerializer,
