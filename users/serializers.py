@@ -135,3 +135,7 @@ class ConfirmUserSerializer(serializers.Serializer):
         confirmation.delete()
         token, _ = Token.objects.get_or_create(user=user)
         return user, token
+
+
+class GoogleAuthSerializer(serializers.Serializer):
+    code = serializers.CharField()

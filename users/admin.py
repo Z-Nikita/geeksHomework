@@ -7,21 +7,21 @@ from .models import ConfirmationCode, CustomUser
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
     model = CustomUser
-    list_display = ('id', 'email', 'phone_number', 'birthdate', 'is_staff', 'is_active', 'is_superuser')
+    list_display = ('id', 'email', 'first_name', 'last_name', 'phone_number', 'birthdate', 'registration_source', 'is_staff', 'is_active', 'is_superuser')
     list_filter = ('is_staff', 'is_active', 'is_superuser')
     ordering = ('id',)
-    search_fields = ('email', 'phone_number')
+    search_fields = ('email', 'first_name', 'last_name', 'phone_number')
 
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
-        ('Personal info', {'fields': ('phone_number', 'birthdate')}),
+        ('Personal info', {'fields': ('first_name', 'last_name', 'phone_number', 'birthdate', 'registration_source')}),
         ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
         ('Important dates', {'fields': ('last_login',)}),
     )
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('email', 'phone_number', 'birthdate', 'password1', 'password2', 'is_staff', 'is_active', 'is_superuser')
+            'fields': ('email', 'first_name', 'last_name', 'phone_number', 'birthdate', 'registration_source', 'password1', 'password2', 'is_staff', 'is_active', 'is_superuser')
         }),
     )
 

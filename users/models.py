@@ -14,6 +14,9 @@ def generate_confirmation_code() -> str:
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True)
     phone_number = models.CharField(max_length=30, blank=True, null=True)
+    first_name = models.CharField(max_length=150, blank=True, default='')
+    last_name = models.CharField(max_length=150, blank=True, default='')
+    registration_source = models.CharField(max_length=30, blank=True, default='local')
     birthdate = models.DateField(blank=True, null=True)
     is_active = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
