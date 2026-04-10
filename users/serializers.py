@@ -3,7 +3,8 @@ from rest_framework import serializers
 from rest_framework.authtoken.models import Token
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-from .models import ConfirmationCode, generate_confirmation_code
+from .confirmation_cache import delete_confirmation_code, get_confirmation_code, set_confirmation_code
+from .models import generate_confirmation_code
 
 User = get_user_model()
 
@@ -61,9 +62,8 @@ class RegisterSerializer(serializers.Serializer):
             is_active=False,
         )
         code = generate_confirmation_code()
-        while ConfirmationCode.objects.filter(code=code).exists():
-            code = generate_confirmation_code()
-        ConfirmationCode.objects.update_or_create(user=user, defaults={'code': code})
+        set_confirmation_code(user.id, code)
+        user._confirmation_code = code
         return user
 
     def to_representation(self, instance):
@@ -74,7 +74,7 @@ class RegisterSerializer(serializers.Serializer):
             'phone_number': phone_number,
             'birthdate': instance.birthdate.isoformat() if instance.birthdate else None,
             'is_active': instance.is_active,
-            'confirmation_code': instance.confirmation_code.code,
+            'confirmation_code': getattr(instance, '_confirmation_code', None),
             'message': 'User registered successfully. Confirm the account with the 6-digit code.',
         }
 
@@ -115,24 +115,21 @@ class ConfirmUserSerializer(serializers.Serializer):
         if user.is_active:
             raise serializers.ValidationError({'detail': 'User is already confirmed.'})
 
-        try:
-            confirmation = user.confirmation_code
-        except ConfirmationCode.DoesNotExist:
-            raise serializers.ValidationError({'code': 'Confirmation code not found.'})
+        cached_code = get_confirmation_code(user.id)
+        if not cached_code:
+            raise serializers.ValidationError({'code': 'Confirmation code not found or expired.'})
 
-        if confirmation.code != code:
+        if cached_code != code:
             raise serializers.ValidationError({'code': 'Invalid confirmation code.'})
 
         attrs['user'] = user
-        attrs['confirmation'] = confirmation
         return attrs
 
     def save(self, **kwargs):
         user = self.validated_data['user']
-        confirmation = self.validated_data['confirmation']
         user.is_active = True
         user.save(update_fields=['is_active'])
-        confirmation.delete()
+        delete_confirmation_code(user.id)
         token, _ = Token.objects.get_or_create(user=user)
         return user, token
 
