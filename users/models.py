@@ -31,6 +31,26 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         return self.email
 
 
+class TaskLog(models.Model):
+    TASK_TYPE_CHOICES = (
+        ('delay', 'Delay task'),
+        ('crontab', 'Crontab task'),
+        ('smtp', 'SMTP task'),
+    )
+
+    task_type = models.CharField(max_length=20, choices=TASK_TYPE_CHOICES)
+    message = models.TextField()
+    recipient_email = models.EmailField(blank=True, default='')
+    status = models.CharField(max_length=20, default='success')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self) -> str:
+        return f"{self.task_type}: {self.message[:50]}"
+
+
 class ConfirmationCode(models.Model):
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,

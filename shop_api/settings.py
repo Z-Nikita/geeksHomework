@@ -1,6 +1,7 @@
 import os
 from datetime import timedelta
 from pathlib import Path
+from celery.schedules import crontab
 
 import dotenv
 
@@ -126,6 +127,28 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'UPDATE_LAST_LOGIN': False,
+}
+
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True').lower() == 'true'
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER or 'webmaster@localhost'
+
+CELERY_BROKER_URL = os.environ.get(
+    'CELERY_BROKER_URL',
+    'redis://shop_redis:6379/3' if os.environ.get('POSTGRES_HOST') == 'shop_db' else 'redis://localhost:6379/3',
+)
+CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', CELERY_BROKER_URL)
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_BEAT_SCHEDULE = {
+    'heartbeat-every-5-minutes': {
+        'task': 'users.tasks.create_crontab_heartbeat_log',
+        'schedule': crontab(minute='*/5'),
+    },
 }
 
 SWAGGER_SETTINGS = {

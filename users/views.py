@@ -1,15 +1,19 @@
 from rest_framework import generics, status
 from rest_framework.authtoken.models import Token
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .serializers import (
     ConfirmUserSerializer,
     CustomTokenObtainPairSerializer,
+    DelayTaskSerializer,
+    EmailTaskSerializer,
     LoginSerializer,
     RegisterSerializer,
     build_jwt_tokens_for_user,
 )
+from .tasks import create_delay_demo_log, send_demo_email_task
 
 
 class RegisterAPIView(generics.CreateAPIView):
@@ -61,3 +65,41 @@ class ConfirmUserAPIView(generics.GenericAPIView):
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
+
+
+class DelayDemoTaskAPIView(generics.GenericAPIView):
+    serializer_class = DelayTaskSerializer
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        async_result = create_delay_demo_log.delay(serializer.validated_data.get('note', ''))
+        return Response(
+            {
+                'message': 'Delay task started successfully.',
+                'task_id': async_result.id,
+            },
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+
+class SendEmailTaskAPIView(generics.GenericAPIView):
+    serializer_class = EmailTaskSerializer
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        async_result = send_demo_email_task.delay(
+            serializer.validated_data['recipient_email'],
+            serializer.validated_data.get('subject', ''),
+            serializer.validated_data.get('body', ''),
+        )
+        return Response(
+            {
+                'message': 'SMTP task started successfully.',
+                'task_id': async_result.id,
+            },
+            status=status.HTTP_202_ACCEPTED,
+        )

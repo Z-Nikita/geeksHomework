@@ -14,6 +14,30 @@ services:
     volumes:
       - .:/app
 
+  celery_worker:
+    build:
+      context: .
+    command: celery -A shop_api worker -l info
+    depends_on:
+      - shop_db
+      - shop_redis
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+
+  celery_beat:
+    build:
+      context: .
+    command: celery -A shop_api beat -l info
+    depends_on:
+      - shop_db
+      - shop_redis
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+
   shop_db:
     image: postgres:14
     env_file:

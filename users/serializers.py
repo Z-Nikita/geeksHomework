@@ -136,3 +136,13 @@ class ConfirmUserSerializer(serializers.Serializer):
 
 class GoogleAuthSerializer(serializers.Serializer):
     code = serializers.CharField()
+
+
+class DelayTaskSerializer(serializers.Serializer):
+    note = serializers.CharField(required=False, allow_blank=True, default='')
+
+
+class EmailTaskSerializer(serializers.Serializer):
+    recipient_email = serializers.EmailField()
+    subject = serializers.CharField(required=False, allow_blank=True, default='Celery SMTP demo')
+    body = serializers.CharField(required=False, allow_blank=True, default='This email was sent by Celery using SMTP settings.')

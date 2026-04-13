@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from .models import CustomUser
+from .models import CustomUser, TaskLog
 
 
 @admin.register(CustomUser)
@@ -25,3 +25,10 @@ class CustomUserAdmin(UserAdmin):
         }),
     )
 
+
+@admin.register(TaskLog)
+class TaskLogAdmin(admin.ModelAdmin):
+    list_display = ('id', 'task_type', 'recipient_email', 'status', 'created_at')
+    list_filter = ('task_type', 'status', 'created_at')
+    search_fields = ('message', 'recipient_email')
+    ordering = ('-created_at',)
