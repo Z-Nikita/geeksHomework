@@ -1,58 +1,97 @@
-version: '3'
 services:
+  shop_db:
+    image: postgres:14
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-shop_api_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  shop_redis:
+    image: redis:7
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   shop_api:
     build:
       context: .
+    restart: unless-stopped
     command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
     ports:
       - "8000:8000"
-    depends_on:
-      - shop_db
-      - shop_redis
     env_file:
       - .env
     volumes:
       - .:/app
+    depends_on:
+      shop_db:
+        condition: service_healthy
+      shop_redis:
+        condition: service_healthy
 
   celery_worker:
     build:
       context: .
-    command: celery -A shop_api worker -l info
-    depends_on:
-      - shop_db
-      - shop_redis
+    restart: unless-stopped
+    command: celery -A shop_api worker --loglevel=info
     env_file:
       - .env
     volumes:
       - .:/app
+    depends_on:
+      shop_db:
+        condition: service_healthy
+      shop_redis:
+        condition: service_healthy
 
   celery_beat:
     build:
       context: .
-    command: celery -A shop_api beat -l info
-    depends_on:
-      - shop_db
-      - shop_redis
+    restart: unless-stopped
+    command: celery -A shop_api beat --loglevel=info
     env_file:
       - .env
     volumes:
       - .:/app
+    depends_on:
+      shop_db:
+        condition: service_healthy
+      shop_redis:
+        condition: service_healthy
 
-  shop_db:
-    image: postgres:14
+  celery_flower:
+    build:
+      context: .
+    restart: unless-stopped
+    command: celery -A shop_api flower --port=5555
+    ports:
+      - "5555:5555"
     env_file:
       - .env
-    environment:
-      POSTGRES_DB: "${POSTGRES_DB}"
-      POSTGRES_USER: "${POSTGRES_USER}"
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-
-  shop_redis:
-    image: redis:7
-    ports:
-      - "6379:6379"
+      - .:/app
+    depends_on:
+      shop_redis:
+        condition: service_healthy
 
 volumes:
   postgres_data:
+  redis_data:
